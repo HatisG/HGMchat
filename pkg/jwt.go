@@ -42,7 +42,7 @@ func ParseToken(tokenString string) (*Claims, error) {
 		return jwtKey, nil
 	})
 
-	if err != nil || token.Valid {
+	if err != nil || !token.Valid {
 		return nil, errors.New("invalid token")
 	}
 	return claims, nil
