@@ -1,6 +1,10 @@
 package ws
 
-import "github.com/gorilla/websocket"
+import (
+	"time"
+
+	"github.com/gorilla/websocket"
+)
 
 type Client struct {
 	Conn     *websocket.Conn
@@ -10,6 +14,14 @@ type Client struct {
 }
 
 func NewClient(userID uint, conn *websocket.Conn) *Client {
+
+	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+
+	conn.SetPongHandler(func(string) error {
+		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		return nil
+	})
+
 	return &Client{
 		UserID:   userID,
 		Conn:     conn,
@@ -21,16 +33,31 @@ func NewClient(userID uint, conn *websocket.Conn) *Client {
 func (c *Client) Write() {
 	defer func() {
 		_ = c.Conn.Close()
+		Server.Offline(c.UserID)
 	}()
 
-	for msg := range c.SendChan {
-		_ = c.Conn.WriteMessage(websocket.TextMessage, msg)
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case msg, ok := <-c.SendChan:
+			if !ok {
+				return
+			}
+			_ = c.Conn.WriteMessage(websocket.TextMessage, msg)
+
+		case <-ticker.C:
+			_ = c.Conn.WriteMessage(websocket.PingMessage, nil)
+		}
+
 	}
 
 }
 
 func (c *Client) Read() {
 	defer func() {
+		_ = c.Conn.Close()
 		Server.Offline(c.UserID)
 	}()
 
