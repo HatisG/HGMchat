@@ -17,6 +17,7 @@ type LoginReq struct {
 	Password string `json:"password" binding:"required"`
 }
 
+// 注册
 func Register(c *gin.Context) {
 	var req RegisterReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -34,6 +35,7 @@ func Register(c *gin.Context) {
 
 }
 
+// 登录
 func Login(c *gin.Context) {
 	var req LoginReq
 	if err := c.ShouldBindJSON(&req); err != nil {

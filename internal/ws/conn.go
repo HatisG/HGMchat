@@ -13,8 +13,9 @@ type Client struct {
 	IsClosed bool
 }
 
+// 新用户上线
 func NewClient(userID uint, conn *websocket.Conn) *Client {
-
+	//设置超时自动下线
 	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 
 	conn.SetPongHandler(func(string) error {
@@ -36,18 +37,28 @@ func (c *Client) Write() {
 		Server.Offline(c.UserID)
 	}()
 
+	//心跳机制
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 
 	for {
 		select {
+
+		//发送消息
 		case msg, ok := <-c.SendChan:
 			if !ok {
 				return
 			}
+			if c.IsClosed {
+				return
+			}
 			_ = c.Conn.WriteMessage(websocket.TextMessage, msg)
 
+			//发送心跳
 		case <-ticker.C:
+			if c.IsClosed {
+				return
+			}
 			_ = c.Conn.WriteMessage(websocket.PingMessage, nil)
 		}
 
@@ -59,9 +70,11 @@ func (c *Client) Read() {
 	defer func() {
 		_ = c.Conn.Close()
 		Server.Offline(c.UserID)
+		c.IsClosed = true
 	}()
 
 	for {
+		//读取消息
 		_, msg, err := c.Conn.ReadMessage()
 		if err != nil {
 			break

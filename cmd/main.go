@@ -25,6 +25,11 @@ func SetupRouter() *gin.Engine {
 		wsGroup.GET("", ws.WSHandler)
 	}
 
+	chatGroup := r.Group("/chat")
+	chatGroup.Use(middleware.JWT())
+	{
+		wsGroup.POST("/history", handler.GetChatHistory)
+	}
 	return r
 }
 
